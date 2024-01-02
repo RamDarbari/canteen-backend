@@ -1,12 +1,12 @@
 require("dotenv").config();
-const rateLimit = require("express-rate-limit");
+// const rateLimit = require("express-rate-limit");
 const express = require("express");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const cors = require("cors");
-
-
+const { decodeToken } = require("./helper/tokenUtils");
+const functions = require("firebase-functions");
 const { dataBaseConnect } = require("./config/dbConfig");
 dataBaseConnect();
 const app = express();
@@ -21,29 +21,44 @@ const io = require("socket.io")(server, {
 });
 
 global.socketIds = [];
-console.log(global.socketIds);
+// Use the middleware to verify the token before allowing socket connection
+io.use((socket, next) => {
+  // Access the token from the query parameters
+  const token = socket.handshake.query.token;
+
+
+  try {
+    // Decode and verify the token
+    const decodedUser = decodeToken(token);
+    console.log(token, "222222222222");
+
+    // Attach the decoded user information to the socket
+    socket.decodedUser = decodedUser;
+
+    // Token is valid, proceed with the connection
+    next();
+  } catch (error) {
+    // Token verification failed
+    return next(new Error("Authentication error"));
+  }
+});
 
 io.on("connection", (socket) => {
-  const empId = socket.handshake.query.empId
+  // Now, you can access the decoded user information from the socket object
+  const empId = socket.decodedUser.emp_id;
   console.log(`Socket Initialized.`, socket.id, "with userId", empId);
 
-  global.socketIds.push({ userId: empId, socketId: socket.id })
+  global.socketIds.push({ userId: empId, socketId: socket.id });
 });
 
 // const limiter = rateLimit({
 //   windowMs: 15 * 60 * 1000, // 15 minutes
 //   max: 100, // limit each IP to 100 requests per windowMs
-//   message: 'Too many requests from this IP, please try again later.',
-// });
-
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 10000, // Max 100 requests per windowMs
+//   message: "Too many requests from this IP, please try again later.",
 // });
 
 const adminRouter = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRoutes");
-
 
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
@@ -59,8 +74,8 @@ app.use(function (req, res, next) {
   req.io = io;
   next();
 });
-app.use("/", userRoutes);
-app.use("/admin", adminRouter);
+app.use("/user/modules/v1", userRoutes);
+app.use("/admin/modules/v1", adminRouter);
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));
@@ -76,5 +91,5 @@ app.use(function (err, req, res, next) {
 });
 const port = process.env.PORT || 5000;
 server.listen(port, console.log("Server Connected " + port));
+exports.api = functions.https.onRequest(app);
 module.exports = { app };
-

@@ -2,8 +2,10 @@
   "name": "backend",
   "version": "0.0.0",
   "private": true,
+  "main": "src/app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "nodemon app.js",
+    "deploy": "firebase deploy --only functions:api"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -13,8 +15,9 @@
     "dotenv": "^16.3.1",
     "exceljs": "^4.4.0",
     "express": "~4.16.1",
-    "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^4.5.0",
     "http-errors": "~1.6.3",
     "ioredis": "^5.3.2",
     "jade": "~1.11.0",
@@ -24,12 +27,13 @@
     "mongoose": "^7.5.3",
     "mongoose-int32": "^0.6.0",
     "morgan": "~1.9.1",
-    "node-cache": "^5.1.2",
     "nodemailer": "^6.9.6",
     "nodemailer-smtp-pool": "^2.8.3",
     "nodemon": "^3.0.1",
     "otp-generator": "^4.0.1",
-    "socket.io": "^4.7.2",
     "wbm": "^1.1.16"
+  },
+  "engines": {
+    "node": "18"
   }
 }
