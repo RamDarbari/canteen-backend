@@ -18,7 +18,7 @@ const notificationList = async (req, res) => {
       const messages = await Notification.find({
         userId: userId,
         timestamp: { $gt: todayStart.toDate(), $lt: todayEnd.toDate() },
-      });
+      }).sort({ createdAt: -1 });
       console.log(messages, "lllllllllllllllllllllllll");
   
       // Delete notifications older than today
