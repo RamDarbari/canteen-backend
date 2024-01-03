@@ -10,6 +10,7 @@ const functions = require("firebase-functions");
 const { dataBaseConnect } = require("./config/dbConfig");
 dataBaseConnect();
 const app = express();
+
 const server = require("http").createServer(app);
 const io = require("socket.io")(server, {
   cors: {
@@ -25,12 +26,11 @@ global.socketIds = [];
 io.use((socket, next) => {
   // Access the token from the query parameters
   const token = socket.handshake.query.token;
-
+  console.log(token, "tokennnnn");
 
   try {
     // Decode and verify the token
     const decodedUser = decodeToken(token);
-    console.log(token, "222222222222");
 
     // Attach the decoded user information to the socket
     socket.decodedUser = decodedUser;
@@ -48,7 +48,39 @@ io.on("connection", (socket) => {
   const empId = socket.decodedUser.emp_id;
   console.log(`Socket Initialized.`, socket.id, "with userId", empId);
 
-  global.socketIds.push({ userId: empId, socketId: socket.id });
+  // let index = global.socketIds.findIndex((user) => user.userId);
+  // console.log("index: ", index)
+
+  // if (index != -1) {
+  //   global.socketIds[index].socketId = socket.id;
+  // } else {
+  //   global.socketIds[global.socketIds.length] = {
+  //     userId: empId,
+  //     socketId: socket.id,
+  //   };
+  // }
+  let count = 0;
+  for (let i = 0; i < global.socketIds.length; i++) {
+    if (global.socketIds[i].userId == empId) {
+      global.socketIds[i].socketId = socket.id;
+      count++;
+    }
+  }
+
+  if (count == 0) global.socketIds.push({ userId: empId, socketId: socket.id });
+
+  console.log("global sockets: ", global.socketIds);
+
+  // socket.on("disconnect", () => {
+  //   for (let i = 0; i < global.socketIds.length; i++)
+  //     if (
+  //       global.socketIds[i].socketId &&
+  //       global.socketIds[i].socketId == socket.id
+  //     ) {
+  //       global.socketIds.splice(i, 1);
+  //       break;
+  //     }
+  // });
 });
 
 // const limiter = rateLimit({
