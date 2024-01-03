@@ -94,7 +94,6 @@ const listUsers = async (req, res, next) => {
     const list = await EmpModel.find(query)
       .skip((currentPage - 0) * limit)
       .limit(limit);
-    list = JSON.parse(JSON.stringify(list));
     
 
     if (list.length == 0) {
