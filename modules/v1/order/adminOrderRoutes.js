@@ -2,6 +2,7 @@ const {
   listOrder,
   updateStatus,
   pendingOrderList,
+  deletePending,
 } = require("./orderController");
 
 const adminOrderRoutes = require("express").Router();
@@ -9,5 +10,6 @@ const adminOrderRoutes = require("express").Router();
 adminOrderRoutes.get("/pending-order", pendingOrderList);
 adminOrderRoutes.get("/list-order", listOrder);
 adminOrderRoutes.post("/update-status", updateStatus);
+adminOrderRoutes.delete("/delete-item", deletePending);
 
 module.exports = adminOrderRoutes;

@@ -26,7 +26,6 @@ global.socketIds = [];
 io.use((socket, next) => {
   // Access the token from the query parameters
   const token = socket.handshake.query.token;
-  console.log(token, "tokennnnn");
 
   try {
     // Decode and verify the token
@@ -46,7 +45,6 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   // Now, you can access the decoded user information from the socket object
   const empId = socket.decodedUser.emp_id;
-  console.log(`Socket Initialized.`, socket.id, "with userId", empId);
 
   // let index = global.socketIds.findIndex((user) => user.userId);
   // console.log("index: ", index)
