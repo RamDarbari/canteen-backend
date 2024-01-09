@@ -24,10 +24,12 @@ const updateTodayMenu = async (req, res, next) => {
       });
     } else {
       // Check if Today menu id is valid
-      const isTodayMenuIdValid = await dailyMenuModel.findOne({
-        _id: todayMenuId,
-        type: menuType,
-      });
+      const isTodayMenuIdValid = await dailyMenuModel
+        .findOne({
+          _id: todayMenuId,
+          type: menuType,
+        })
+        .lean();
       if (!isTodayMenuIdValid) {
         return res.status(400).json({
           statusCode: 400,
@@ -42,7 +44,7 @@ const updateTodayMenu = async (req, res, next) => {
         return inputArray.indexOf(item) == index;
       });
       // Check if menuType is valid
-      const typeExists = await menuModel.findById(menuType);
+      const typeExists = await menuModel.findById(menuType).lean();
       if (!typeExists) {
         return res.status(400).json({
           statusCode: 400,
@@ -67,7 +69,9 @@ const updateTodayMenu = async (req, res, next) => {
         type: menuType,
       };
       // Update the menu items
-      let result = await dailyMenuModel.findByIdAndUpdate(todayMenuId, data);
+      let result = await dailyMenuModel
+        .findByIdAndUpdate(todayMenuId, data)
+        .lean();
       return res.status(200).json({
         statusCode: 200,
         message: `Today's menu for ${typeExists.title} has been updated successfully`,
@@ -77,6 +81,79 @@ const updateTodayMenu = async (req, res, next) => {
   } catch (err) {
     return res.status(400).json({
       statusCode: 400,
+      message: err.message,
+    });
+  }
+};
+
+const testAddFunction = async (req, res) => {
+  let { sub_menu_items, menuType } = req.body;
+
+  try {
+    let requiredFeilds = {
+      sub_menu_items: sub_menu_items,
+      menuType: menuType,
+    };
+
+    let error = validator.isRequired(requiredFeilds);
+    if (error.length != 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        error: error,
+      });
+    }
+
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString().replaceAll("/", "-"); // today.toISOString().split('T')[0];
+
+    let data = {
+      sub_menu_items: sub_menu_items,
+      type: menuType,
+    };
+
+    await dailyMenuModel.findOneAndUpdate(
+      { date: formattedDate, type: menuType },
+      data,
+      { upsert: true }
+    );
+    
+    const io = req.io;
+
+    const adminEmployeeIds = await EmpModel.find({ role: "admin" }).distinct("EmployeeId").lean();
+
+    const targetSockets = global.socketIds.filter(
+      (sockets) => !adminEmployeeIds.includes(+sockets.userId)
+    );
+
+    if (targetSockets.length > 0) {
+      const message = `Menu for ${menuType} is added successfully for today.`;
+
+      targetSockets.forEach(async (targetSocket) => {
+        io.to(targetSocket.socketId).emit("notification", message);
+        console.log(
+          `Notification sent to user with ID: ${targetSocket.userId}`
+        );
+
+        const result = new Notification({
+          userId: targetSocket.userId,
+          message,
+        });
+
+        await result.save().catch((error) => {
+          console.error("Error saving notification to the database:", error);
+        });
+      });
+    } else {
+      console.log(`No matching non-admin users found in targetSockets.`);
+    }
+
+    return res.status(200).json({
+      statusCode: 200,
+      message: "Menu added/updated successfully",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      statusCode: 500,
       message: err.message,
     });
   }
@@ -98,24 +175,24 @@ const addTodayMenu = async (req, res, next) => {
         error: error,
       });
     }
-    // Check if menuType is valid
-    const typeExists = await menuModel.findById(menuType);
-    if (!typeExists) {
-      return res.status(400).json({
-        statusCode: 400,
-        error: "Invalid type id.",
-      });
-    }
+    // // Check if menuType is valid
+    // const typeExists = await menuModel.findById(menuType).lean();
+    // if (!typeExists) {
+    //   return res.status(400).json({
+    //     statusCode: 400,
+    //     error: "Invalid type id.",
+    //   });
+    // }
     // Check if today's menu already exists
     const today = new Date();
     const formattedDate = today.toLocaleDateString().replaceAll("/", "-"); // today.toISOString().split('T')[0];
+
     const dailyMenu = await dailyMenuModel
       .findOne({
         date: formattedDate,
         type: menuType,
       })
-      .lean()
-      .exec();
+      .lean();
 
     if (dailyMenu) {
       sub_menu_items.forEach((item) => {
@@ -128,11 +205,9 @@ const addTodayMenu = async (req, res, next) => {
         dailyMenu.sub_menu_items.push(item);
       });
 
-      updatedMenu = await dailyMenuModel.findOneAndUpdate(
-        { id: dailyMenu.id },
-        dailyMenu,
-        { new: true }
-      );
+      updatedMenu = await dailyMenuModel
+        .findOneAndUpdate({ id: dailyMenu.id }, dailyMenu, { new: true })
+        .lean();
 
       return res.status(200).json({
         statusCode: 200,
@@ -142,10 +217,12 @@ const addTodayMenu = async (req, res, next) => {
     }
     // Check if menu_items are valid
     for (let i = 0; i < sub_menu_items.length; i++) {
-      const isSubMenuIdValid = await subMenuModel.findOne({
-        _id: sub_menu_items[i],
-        menu_id: menuType,
-      });
+      const isSubMenuIdValid = await subMenuModel
+        .findOne({
+          _id: sub_menu_items[i],
+          menu_id: menuType,
+        })
+        .lean();
 
       if (!isSubMenuIdValid) {
         return res.status(400).json({
@@ -158,6 +235,7 @@ const addTodayMenu = async (req, res, next) => {
       sub_menu_items: sub_menu_items,
       type: menuType,
     };
+    
     const todayMenuRecord = new dailyMenuModel(data);
     const result = await todayMenuRecord.save();
 
@@ -165,7 +243,9 @@ const addTodayMenu = async (req, res, next) => {
 
     const adminEmployeeIds = await EmpModel.find({
       role: "admin",
-    }).distinct("EmployeeId");
+    })
+      .distinct("EmployeeId")
+      .lean();
 
     // Instead of filtering admin users, filter non-admin users
     const targetSockets = global.socketIds.filter(
@@ -187,11 +267,9 @@ const addTodayMenu = async (req, res, next) => {
           message,
         });
 
-        await result
-          .save()
-          .catch((error) => {
-            console.error("Error saving notification to the database:", error);
-          });
+        await result.save().catch((error) => {
+          console.error("Error saving notification to the database:", error);
+        });
       });
     } else {
       console.log(`No matching non-admin users found in targetSockets.`);
@@ -221,22 +299,25 @@ const listTodayMenu = async (req, res, next) => {
     const message = date
       ? `Menu items for the date: ${date} fetched successfully.`
       : "Menu items for today are fetched successfully";
-    const menus = await menuModel.find(
-      {},
-      "_id time title createdAt updatedAt"
-    );
+    const menus = await menuModel
+      .find({}, "_id time title createdAt updatedAt")
+      .lean();
     const result = [];
     for (const menu of menus) {
-      const items = await dailyMenuModel.findOne(
-        { type: menu._id, date: todayDate },
-        "sub_menu_items type date time createdAt updatedAt"
-      );
+      const items = await dailyMenuModel
+        .findOne(
+          { type: menu._id, date: todayDate },
+          "sub_menu_items type date time createdAt updatedAt"
+        )
+        .lean();
 
       const subItems = items
-        ? await subMenuModel.find(
-            { _id: { $in: items.sub_menu_items } },
-            "item_name price quantity createdAt updatedAt"
-          )
+        ? await subMenuModel
+            .find(
+              { _id: { $in: items.sub_menu_items } },
+              "item_name price quantity createdAt updatedAt"
+            )
+            .lean()
         : [];
 
       let today_menu_id;
@@ -271,14 +352,16 @@ const listTodayMenu = async (req, res, next) => {
 const deleteTodayMenu = async (req, res, next) => {
   let todayMenuId = req.query.id;
   try {
-    const isDailyMenuExists = await dailyMenuModel.findByIdAndRemove(
-      todayMenuId
-    );
+    const isDailyMenuExists = await dailyMenuModel
+      .findByIdAndRemove(todayMenuId)
+      .lean();
 
     if (isDailyMenuExists) {
-      let menuDetails = await menuModel.findOne({
-        _id: isDailyMenuExists.type,
-      });
+      let menuDetails = await menuModel
+        .findOne({
+          _id: isDailyMenuExists.type,
+        })
+        .lean();
 
       return res.status(200).json({
         statusCode: 200,
@@ -304,4 +387,5 @@ module.exports = {
   listTodayMenu,
   deleteTodayMenu,
   updateTodayMenu,
+  testAddFunction,
 };
