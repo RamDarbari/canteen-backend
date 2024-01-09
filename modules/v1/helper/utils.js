@@ -1,8 +1,11 @@
-// tokenUtils.js
-
+const otp = require("otp-generator");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto-js");
 require("dotenv").config();
+
+const generateOTP = () => {
+  return otp.generate(6, { upperCase: false, specialChars: false });
+};
 
 const decodeToken = (token) => {
   try {
@@ -21,13 +24,10 @@ const decodeToken = (token) => {
     // Verify JWT
     const decoded = jwt.verify(decryptedToken, process.env.TOKEN_KEY);
 
-
     return decoded;
   } catch (err) {
-    throw new Error('Token decoding failed');
+    throw new Error("Token decoding failed");
   }
 };
 
-module.exports = {
-  decodeToken,
-};
+module.exports = { generateOTP, decodeToken };

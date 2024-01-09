@@ -5,11 +5,20 @@ const path = require("path");
 const cookieParser = require("cookie-parser");
 const logger = require("morgan");
 const cors = require("cors");
-const { decodeToken } = require("./helper/tokenUtils");
+const fs = require("fs");
+const { decodeToken } = require("./modules/v1/helper/utils");
 const functions = require("firebase-functions");
 const { dataBaseConnect } = require("./config/dbConfig");
 dataBaseConnect();
 const app = express();
+
+// https = require("https");
+//  var priPath = path.join('./SSL/privkey.pem');
+//  var certPath = path.join('./SSL/cert.pem');
+// const privateKey = fs.readFileSync(priPath, 'utf8'); //privkey.pem/
+// const certificate = fs.readFileSync(certPath, 'utf8'); //cert.pem
+// const options = { key: privateKey, cert: certificate };
+// const server = https.createServer(options, app);
 
 const server = require("http").createServer(app);
 const io = require("socket.io")(server, {
@@ -46,17 +55,6 @@ io.on("connection", (socket) => {
   // Now, you can access the decoded user information from the socket object
   const empId = socket.decodedUser.emp_id;
 
-  // let index = global.socketIds.findIndex((user) => user.userId);
-  // console.log("index: ", index)
-
-  // if (index != -1) {
-  //   global.socketIds[index].socketId = socket.id;
-  // } else {
-  //   global.socketIds[global.socketIds.length] = {
-  //     userId: empId,
-  //     socketId: socket.id,
-  //   };
-  // }
   let count = 0;
   for (let i = 0; i < global.socketIds.length; i++) {
     if (global.socketIds[i].userId == empId) {
@@ -68,17 +66,6 @@ io.on("connection", (socket) => {
   if (count == 0) global.socketIds.push({ userId: empId, socketId: socket.id });
 
   console.log("global sockets: ", global.socketIds);
-
-  // socket.on("disconnect", () => {
-  //   for (let i = 0; i < global.socketIds.length; i++)
-  //     if (
-  //       global.socketIds[i].socketId &&
-  //       global.socketIds[i].socketId == socket.id
-  //     ) {
-  //       global.socketIds.splice(i, 1);
-  //       break;
-  //     }
-  // });
 });
 
 // const limiter = rateLimit({

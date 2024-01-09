@@ -1,14 +1,11 @@
-const {
-  confirmOrder,
-} = require("../../../views/emailTemplate/confirmOrderNotification");
-const { rejectOrder } = require("../../../views/emailTemplate/rejectOrder");
-const validator = require("../../../helper/validations");
+const validator = require("../helper/validations");
 const { EmpModel } = require("../../../models/empDetailsModel");
 const { orderModel } = require("../../../models/ordersModel");
 const { subMenuModel } = require("../../../models/subMenuModel");
 const { Notification } = require("../../../models/notificationModel");
 const moment = require("moment");
 const Excel = require("exceljs");
+const { sendMail } = require("../helper/mail.helper");
 
 const addOrder = async (req, res) => {
   try {
@@ -116,7 +113,7 @@ const addOrder = async (req, res) => {
         const message = ` An order has been placed for ${userDetails.FirstName} by the admin.`;
 
         if (targetSockets.length > 0) {
-          targetSockets.forEach((targetSocket) => {
+          targetSockets.forEach(async (targetSocket) => {
             io.to(targetSocket.socketId).emit("notification", message);
             console.log(
               `Notification sent to user with ID: ${userDetails.EmployeeId}`
@@ -128,14 +125,8 @@ const addOrder = async (req, res) => {
               message,
             });
 
-            result
-              .save()
-              .then((savedNotification) => {
-                console.log(
-                  "Notification saved to the database:",
-                  savedNotification
-                );
-              })
+            await result.save()
+
               .catch((error) => {
                 console.error(
                   "Error saving notification to the database:",
@@ -147,7 +138,12 @@ const addOrder = async (req, res) => {
           console.log(`User with ID ${empDetails.EmployeeId} not found.`);
         }
 
-        await confirmOrder(userDetails.email, result);
+        await sendMail(
+          userDetails.email,
+          "Order confirmed",
+          "confirmOrder",
+          result
+        );
         return res.status(200).json({
           statusCode: 200,
           message: "Order placed successfully.",
@@ -313,7 +309,12 @@ const updateStatus = async (req, res) => {
           console.log(`User with ID ${empDetails.EmployeeId} not found.`);
         }
 
-        await confirmOrder(empDetails.email, isOrderIdValid); // send mail to user
+        await sendMail(
+          empDetails.email,
+          "Order confirmed",
+          "confirmOrder",
+          isOrderIdValid
+        ); // send mail to user
         return res.status(200).json({
           statusCode: 200,
           message: "User order is confirmed",
@@ -359,7 +360,12 @@ const updateStatus = async (req, res) => {
           console.log(`User with ID ${empDetails.EmployeeId} not found.`);
         }
 
-        await rejectOrder(empDetails.email, isOrderIdValid); // send mail to user
+        await sendMail(
+          empDetails.email,
+          "Order Cancelled",
+          "rejectOrder",
+          isOrderIdValid
+        ); // send mail to user
 
         return res.status(200).json({
           statusCode: 200,
@@ -399,6 +405,8 @@ const deletePending = async (req, res) => {
           message: "Item doesn't exist in the order",
         });
       } else {
+        order.totalBalance =
+          order.totalBalance - order.order_rec[index].totalPrice;
         order.order_rec.splice(index, 1);
 
         let updatedOrder = await orderModel.findByIdAndUpdate(order_id, order, {

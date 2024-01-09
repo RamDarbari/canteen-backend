@@ -1,7 +1,7 @@
 //============================REQUIRE MONGOOSE====================================================================
 const { menuModel } = require("../../../models/menuModel");
 const { subMenuModel } = require("../../../models/subMenuModel");
-const validator = require("../../../helper/validations");
+const validator = require("../helper/validations");
 
 //=============================LIST ALL Sub MENUS====================================================================
 

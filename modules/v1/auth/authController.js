@@ -1,10 +1,10 @@
 const { EmpModel } = require("../../../models/empDetailsModel");
-const validator = require("../../../helper/validations");
+const validator = require("../helper/validations");
 let jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { otpModel } = require("../../../models/otpModel");
 const crypto = require("crypto-js");
-const { sendEmail } = require("../../../views/emailTemplate/sendOtp");
+const { sendMail } = require("../helper/mail.helper");
 
 const login = async (req, res) => {
   try {
@@ -24,7 +24,9 @@ const login = async (req, res) => {
           message: "Invalid employee id.",
         });
       }
-      let otpDetails = await sendEmail(empExists.email);
+      
+      let otpDetails = await sendMail(empExists.email, "Email Verification", "sendOtp");
+
       if (otpDetails.error) {
         return res.status(400).json({
           statusCode: 400,
@@ -94,7 +96,6 @@ const listUsers = async (req, res, next) => {
     const list = await EmpModel.find(query)
       .skip((currentPage - 0) * limit)
       .limit(limit);
-    
 
     if (list.length == 0) {
       return res.status(200).json({
@@ -227,20 +228,17 @@ const verifyOTP = async (req, res) => {
           .json({ success: false, message: "Please try to login again" });
       }
 
-      const createAuthToken = () => {
-        const token = jwt.sign(
-          { user_id: empDetails._id, emp_id },
-          process.env.TOKEN_KEY,
-          {
-            expiresIn: "2400h",
-          }
-        );
-        return encodeURIComponent(
-          crypto.AES.encrypt(token, process.env.TOKEN_KEY).toString()
-        );
-      };
+      const jwtToken = jwt.sign(
+        { user_id: empDetails._id, emp_id },
+        process.env.TOKEN_KEY,
+        {
+          expiresIn: "2400h",
+        }
+      );
 
-      const token = createAuthToken();
+      const token = encodeURIComponent(
+        crypto.AES.encrypt(jwtToken, process.env.TOKEN_KEY).toString()
+      );
 
       if (result.count >= 3) {
         await otpModel.deleteMany({ email_id: empDetails.email });
@@ -283,6 +281,26 @@ const verifyOTP = async (req, res) => {
       error: err.message,
     });
   }
+};
+
+const logout = async (req, res, next) => {
+  let count = 0;
+  for (let i = 0; i < global.socketIds.length; i++) {
+    if (global.socketIds[i].userId == req.emp.emp_id) {
+      global.socketIds.splice(i, 1);
+      break;
+    }
+    count++;
+  }
+
+  if (count == global.socketIds.length)
+    return res
+      .status(400)
+      .json({ statusCode: 400, message: "This user is not logged in" });
+
+  return res
+    .status(200)
+    .json({ statusCode: 200, message: "Logged out successfully" });
 };
 
 // const deleteUser = async (req, res, next) => {
@@ -333,4 +351,5 @@ module.exports = {
   viewUser,
   createUser,
   verifyOTP,
+  logout,
 };

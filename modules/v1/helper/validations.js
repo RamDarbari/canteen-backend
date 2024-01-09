@@ -2,12 +2,12 @@ function isRequired(data) {
   let err = [];
   for (let [key, value] of Object.entries(data)) {
     // console.log(`${key} ${value}`);
-    if (value == ""||value===undefined||value===null) {
+    if (value == "" || value === undefined || value === null) {
       err.push(`${key} is required`);
     } else {
       if (key == "username") {
         err.push(isNameValid(key, value));
-      } else if (key == "new_password"||key == "password") {
+      } else if (key == "new_password" || key == "password") {
         err.push(isPasswordValid(key, value));
       } else if (key == "email") {
         err.push(isEmailValid(key, value));
@@ -28,12 +28,12 @@ function isRequired(data) {
   }
   return err.filter((item) => item != true);
 }
-function isArray(key ,value) {
- if(Array.isArray(value)){
-  return true;
- }else{
-  return `${key} must be of array type`;
- }
+function isArray(key, value) {
+  if (Array.isArray(value)) {
+    return true;
+  } else {
+    return `${key} must be of array type`;
+  }
 }
 function isNameValid(key, value) {
   if (!/^[a-zA-Z ]{3,30}$/.test(value)) {
@@ -109,4 +109,3 @@ module.exports = {
   isUrlValid,
   isNumeric,
 };
-
